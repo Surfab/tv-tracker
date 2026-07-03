@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serie TV</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #14161a;
+    --bg-card: #1d2025;
+    --bg-card-hover: #24282e;
+    --text: #edeae3;
+    --text-dim: #9a9da3;
+    --text-dim2: #8a8d93;
+    --accent: #e8a33d;
+    --accent-dim: #6b5530;
+    --teal: #4a7a78;
+    --border: #2a2e35;
+    --danger: #c25c5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 32px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle { color: var(--text-dim2); font-size: 14px; margin-bottom: 24px; }
+
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .search-bar input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+  .search-bar input:focus { outline: none; border-color: var(--accent); }
+  .search-bar button {
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .search-bar button:hover { opacity: 0.9; }
+
+  .search-results {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .search-result-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item img { width: 40px; border-radius: 4px; }
+  .search-result-item .info { flex: 1; }
+  .search-result-item .info .name { font-weight: 600; font-size: 14px; }
+  .search-result-item .info .year { color: var(--text-dim2); font-size: 12px; }
+  .search-result-item button {
+    background: transparent;
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 10px 16px;
+    color: var(--text-dim2);
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    transition: background 0.15s;
+  }
+  .card:hover { background: var(--bg-card-hover); }
+  .card .name { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .card .meta { color: var(--text-dim2); font-size: 12px; line-height: 1.6; }
+  .card .status-select {
+    margin-top: 10px;
+    width: 100%;
+    background: #14161a;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .card .fav-star {
+    float: right;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-dim2);
+  }
+  .card .fav-star.active { color: var(--accent); }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim2);
+    padding: 60px 20px;
+    font-size: 14px;
+  }
+
+  .loading { text-align: center; color: var(--text-dim2); padding: 40px; }
+
+  .badge {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 6px;
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .view-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim2);
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .view-toggle button.active { background: var(--bg-card-hover); color: var(--accent); }
+
+  .cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cal-nav button {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+  }
+  .cal-nav .cal-title { font-size: 15px; font-weight: 600; text-transform: capitalize; min-width: 160px; text-align: center; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    grid-column: 1/-1;
+  }
+  .cal-dayname {
+    text-align: center;
+    color: var(--text-dim2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 0;
+  }
+  .cal-cell {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-height: 84px;
+    padding: 6px;
+    font-size: 11px;
+  }
+  .cal-cell.other-month { opacity: 0.35; }
+  .cal-cell.today { border-color: var(--accent); }
+  .cal-cell .day-num { color: var(--text-dim2); font-size: 11px; margin-bottom: 4px; }
+  .cal-cell.today .day-num { color: var(--accent); font-weight: 700; }
+  .cal-ep {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 5px;
+    padding: 2px 5px;
+    margin-bottom: 3px;
+    line-height: 1.3;
+    overflow: hidden;
+    display: block;
+    text-decoration: none;
+  }
+  .cal-ep .ep-label { color: var(--text-dim2); }
+  @media (max-width: 640px) {
+    .cal-cell { min-height: 60px; }
+  }
+
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .login-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 340px;
+  }
+  .login-box h2 { font-family: Georgia, serif; margin: 0 0 20px; font-weight: 600; }
+  .login-box input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  .login-box input:focus { outline: none; border-color: var(--accent); }
+  .login-box button {
+    width: 100%;
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .login-error { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .logout-link { color: var(--text-dim2); font-size: 13px; cursor: pointer; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="loginOverlay" class="login-overlay" style="display:none;">
+  <div class="login-box">
+    <h2>Serie TV</h2>
+    <input type="email" id="loginEmail" placeholder="Email" autocomplete="username">
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    <button onclick="doLogin()">Entra</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<h1>Serie TV</h1>
+<div class="subtitle" id="subtitle">Caricamento... <span class="logout-link" id="logoutLink" style="display:none;" onclick="doLogout()">esci</span></div>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="Cerca una serie su TMDB, es. Silo, The Bear...">
+  <button onclick="searchTMDB()">Cerca</button>
+  <button id="syncBtn" onclick="syncWithTMDB()" style="background: transparent; border: 1px solid var(--teal); color: var(--teal);">Sincronizza</button>
+</div>
+<div id="syncStatus" style="display:none; color: var(--text-dim2); font-size: 13px; margin: -10px 0 16px;"></div>
+<div id="searchResults"></div>
+
+<div class="tabs">
+  <div class="tab active" data-status="tutte" onclick="setTab('tutte')">Tutte</div>
+  <div class="tab" data-status="guardando" onclick="setTab('guardando')">Sto guardando</div>
+  <div class="tab" data-status="in_corso" onclick="setTab('in_corso')">In corso</div>
+  <div class="tab" data-status="seguita" onclick="setTab('seguita')">Da iniziare</div>
+  <div class="tab" data-status="completata" onclick="setTab('completata')">Completate</div>
+  <div class="tab" data-status="abbandonata" onclick="setTab('abbandonata')">Abbandonate</div>
+  <div class="tab" data-status="in_arrivo" onclick="setTab('in_arrivo')">In arrivo</div>
+</div>
+
+<div id="grid" class="grid">
+  <div class="loading">Caricamento serie...</div>
+</div>
+
+<script>
+// ====== CONFIGURAZIONE ======
+const SUPABASE_URL = 'https://szfosljhhmlzrtjssvzu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_A_UmU6eLl48s32wg_4d2Hw_UTH_enqd';
+const TMDB_KEY = '5bb193992b4709bb4ba04036c4b7fa17';
+// =============================
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let allShows = [];
+let currentTab = 'tutte';
+let calView = 'lista';           // lista | settimana | mese
+let calAnchor = new Date();      // data di riferimento per calendario
+
+function setCalView(v) { calView = v; calAnchor = new Date(); render(); }
+function calShift(dir) {
+  if (calView === 'mese') calAnchor.setMonth(calAnchor.getMonth() + dir);
+  else calAnchor.setDate(calAnchor.getDate() + dir * 7);
+  render();
+}
+
+function toISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderCalendar(upcoming, mode) {
+  // Mappa data -> episodi
+  const byDate = {};
+  upcoming.forEach(s => {
+    (byDate[s.next_air_date] = byDate[s.next_air_date] || []).push(s);
+  });
+
+  const todayISO = toISO(new Date());
+  const dayNames = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  let cells = [];
+  let title = '';
+
+  if (mode === 'mese') {
+    const y = calAnchor.getFullYear(), m = calAnchor.getMonth();
+    title = calAnchor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    const first = new Date(y, m, 1);
+    // Lunedì della settimana che contiene il primo del mese
+    const start = new Date(first);
+    start.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      cells.push({ date: d, otherMonth: d.getMonth() !== m });
+    }
+  } else {
+    // Settimana: da lunedì a domenica
+    const start = new Date(calAnchor);
+    start.setDate(calAnchor.getDate() - ((calAnchor.getDay() + 6) % 7));
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    title = `${start.getDate()} ${start.toLocaleDateString('it-IT',{month:'short'})} - ${end.getDate()} ${end.toLocaleDateString('it-IT',{month:'short'})}`;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      cells.push({ date: d, otherMonth: false });
+    }
+  }
+
+  let html = `<div style="grid-column: 1/-1; display:flex; justify-content:center;">
+    <div class="cal-nav">
+      <button onclick="calShift(-1)">‹</button>
+      <span class="cal-title">${title}</span>
+      <button onclick="calShift(1)">›</button>
+    </div>
+  </div>`;
+
+  html += '<div class="cal-grid">';
+  html += dayNames.map(n => `<div class="cal-dayname">${n}</div>`).join('');
+  html += cells.map(c => {
+    const iso = toISO(c.date);
+    const eps = byDate[iso] || [];
+    return `<div class="cal-cell ${c.otherMonth?'other-month':''} ${iso===todayISO?'today':''}">
+      <div class="day-num">${c.date.getDate()}</div>
+      ${eps.map(s => {
+        const label = (s.next_episode_label || '').split(' · ')[0];
+        const inner = `${escapeHtml(s.name)}${label ? ` <span class="ep-label">${label}</span>` : ''}`;
+        return s.tmdb_id
+          ? `<a class="cal-ep" href="https://www.themoviedb.org/tv/${s.tmdb_id}?language=it-IT" target="_blank" rel="noopener">${inner}</a>`
+          : `<span class="cal-ep">${inner}</span>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+  html += '</div>';
+  return html;
+}
+
+async function loadShows() {
+  const { data, error } = await sb.from('shows').select('*').order('name');
+  if (error) {
+    document.getElementById('grid').innerHTML = `<div class="empty-state">Errore nel caricamento: ${error.message}<br><br>Controlla di aver creato la tabella "shows" ed eseguito l'import del CSV.</div>`;
+    document.getElementById('subtitle').textContent = 'Errore di connessione';
+    return;
+  }
+  allShows = data;
+  document.getElementById('subtitle').textContent = `${data.length} serie nella tua libreria`;
+  render();
+}
+
+function setTab(status) {
+  currentTab = status;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.status === status));
+  render();
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+
+  if (currentTab === 'in_arrivo') {
+    const upcoming = allShows
+      .filter(s => s.next_air_date)
+      .sort((a,b) => a.next_air_date.localeCompare(b.next_air_date));
+
+    let html = `<div style="grid-column: 1/-1; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <button onclick="refreshUpcoming()" id="upcomingBtn" style="background: var(--accent); color:#1a1a1a; border:none; padding:10px 18px; border-radius:8px; font-weight:600; cursor:pointer;">Aggiorna uscite</button>
+      <div class="view-toggle">
+        <button class="${calView==='lista'?'active':''}" onclick="setCalView('lista')">Lista</button>
+        <button class="${calView==='settimana'?'active':''}" onclick="setCalView('settimana')">Settimana</button>
+        <button class="${calView==='mese'?'active':''}" onclick="setCalView('mese')">Mese</button>
+      </div>
+      <span id="upcomingStatus" style="color: var(--text-dim2); font-size:13px;"></span>
+    </div>`;
+
+    if (calView === 'lista') {
+      const today = new Date().toISOString().slice(0,10);
+      const future = upcoming.filter(s => s.next_air_date >= today);
+      if (future.length === 0) {
+        html += '<div class="empty-state" style="grid-column: 1/-1;">Nessuna uscita in programma. Premi "Aggiorna uscite" per interrogare TMDB sulle serie che segui.</div>';
+      } else {
+        html += future.map(s => `
+          <div class="card">
+            <div class="name">${s.tmdb_id ? `<a href="https://www.themoviedb.org/tv/${s.tmdb_id}?language=it-IT" target="_blank" rel="noopener" style="color: inherit; text-decoration: none; border-bottom: 1px dotted var(--text-dim2);">${escapeHtml(s.name)}</a>` : escapeHtml(s.name)}</div>
+            <div class="meta">${s.next_episode_label || 'Nuovo episodio'}</div>
+            <span class="badge">${formatDate(s.next_air_date)}</span>
+          </div>
+        `).join('');
+      }
+    } else {
+      html += renderCalendar(upcoming, calView);
+    }
+    grid.innerHTML = html;
+    return;
+  }
+
+  const filtered = currentTab === 'tutte' ? allShows : allShows.filter(s => s.status === currentTab);
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty-state">Nessuna serie in questa categoria.</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(s => `
+    <div class="card">
+      <span class="fav-star ${s.is_favorite ? 'active' : ''}" onclick="toggleFavorite(${s.id}, ${!s.is_favorite})">★</span>
+      <div class="name">${s.tmdb_id
+        ? `<a href="https://www.themoviedb.org/tv/${s.tmdb_id}?language=it-IT" target="_blank" rel="noopener" style="color: inherit; text-decoration: none; border-bottom: 1px dotted var(--text-dim2);">${escapeHtml(s.name)}</a>`
+        : escapeHtml(s.name)}</div>
+      <div class="meta">
+        ${s.episodes_seen || 0} episodi visti
+        ${s.last_season ? `<br>Ultimo: S${s.last_season}E${s.last_episode}` : ''}
+        ${s.last_watched_date ? `<br>${formatDate(s.last_watched_date)}` : ''}
+        ${s.rating ? `<br>Voto: ${s.rating}` : ''}
+      </div>
+      <select class="status-select" onchange="updateStatus(${s.id}, this.value)">
+        <option value="guardando" ${s.status==='guardando'?'selected':''}>Sto guardando</option>
+        <option value="seguita" ${s.status==='seguita'?'selected':''}>Da iniziare / seguita</option>
+        <option value="in_corso" ${s.status==='in_corso'?'selected':''}>In corso</option>
+        <option value="completata" ${s.status==='completata'?'selected':''}>Completata</option>
+        <option value="abbandonata" ${s.status==='abbandonata'?'selected':''}>Abbandonata</option>
+      </select>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatDate(d) {
+  try {
+    return new Date(d).toLocaleDateString('it-IT', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch { return d; }
+}
+
+async function updateStatus(id, status) {
+  await sb.from('shows').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+  const show = allShows.find(s => s.id === id);
+  if (show) show.status = status;
+  render();
+}
+
+async function toggleFavorite(id, value) {
+  await sb.from('shows').update({ is_favorite: value, updated_at: new Date().toISOString() }).eq('id', id);
+  const show = allShows.find(s => s.id === id);
+  if (show) show.is_favorite = value;
+  render();
+}
+
+async function searchTMDB() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) return;
+  const resultsDiv = document.getElementById('searchResults');
+  resultsDiv.innerHTML = '<div class="loading">Cerco su TMDB...</div>';
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&language=it-IT`);
+    const data = await res.json();
+    if (!data.results || data.results.length === 0) {
+      resultsDiv.innerHTML = '<div class="search-results"><div class="search-result-item">Nessun risultato.</div></div>';
+      return;
+    }
+    resultsDiv.innerHTML = '<div class="search-results">' + data.results.slice(0, 6).map(r => `
+      <div class="search-result-item">
+        ${r.poster_path ? `<img src="https://image.tmdb.org/t/p/w92${r.poster_path}">` : ''}
+        <div class="info">
+          <div class="name">${escapeHtml(r.name)}</div>
+          <div class="year">${r.first_air_date ? r.first_air_date.slice(0,4) : 'anno sconosciuto'}</div>
+        </div>
+        <button onclick='addShow(${JSON.stringify(r.id)}, ${JSON.stringify(r.name)}, ${JSON.stringify(r.poster_path)})'>Aggiungi</button>
+      </div>
+    `).join('') + '</div>';
+  } catch (e) {
+    resultsDiv.innerHTML = `<div class="search-results"><div class="search-result-item">Errore: ${e.message}</div></div>`;
+  }
+}
+
+async function addShow(tmdbId, name, posterPath) {
+  const existing = allShows.find(s => s.tmdb_id === tmdbId || s.name === name);
+  if (existing) {
+    alert(`"${name}" è già nella tua libreria.`);
+    return;
+  }
+  const { error } = await sb.from('shows').insert({
+    tmdb_id: tmdbId,
+    name: name,
+    poster_path: posterPath,
+    status: 'seguita',
+    episodes_seen: 0
+  });
+  if (error) {
+    alert('Errore: ' + error.message);
+    return;
+  }
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('searchInput').value = '';
+  loadShows();
+}
+
+document.getElementById('searchInput').addEventListener('keypress', e => {
+  if (e.key === 'Enter') searchTMDB();
+});
+
+// ====== SINCRONIZZAZIONE TMDB ======
+// Per ogni serie senza tmdb_id: cerca su TMDB per nome, salva l'id e il poster.
+// Poi legge lo stato della serie: se è conclusa e hai visto tutti gli episodi, la marca "completata".
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function syncWithTMDB() {
+  const btn = document.getElementById('syncBtn');
+  const statusEl = document.getElementById('syncStatus');
+  btn.disabled = true;
+  btn.textContent = 'In corso...';
+  statusEl.style.display = 'block';
+
+  const toSync = allShows.filter(s => !s.tmdb_id);
+  let matched = 0, completed = 0, notFound = [];
+
+  for (let i = 0; i < toSync.length; i++) {
+    const show = toSync[i];
+    statusEl.textContent = `Sincronizzo ${i + 1} di ${toSync.length}: ${show.name}`;
+    try {
+      // Nomi tipo "Bodies (2023)": tolgo l'anno dal nome e lo uso come filtro
+      const yearMatch = show.name.match(/^(.*?)\s*\(((?:19|20)\d{2})\)$/);
+      const queryName = yearMatch ? yearMatch[1] : show.name;
+      const year = yearMatch ? yearMatch[2] : null;
+
+      // 1. Cerca su TMDB per nome (con anno se presente)
+      let url = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_KEY}&query=${encodeURIComponent(queryName)}`;
+      if (year) url += `&first_air_date_year=${year}`;
+      let res = await fetch(url);
+      let data = await res.json();
+
+      // Se col filtro anno non trova nulla, riprova senza
+      if ((!data.results || data.results.length === 0) && year) {
+        res = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_KEY}&query=${encodeURIComponent(queryName)}`);
+        data = await res.json();
+      }
+
+      if (!data.results || data.results.length === 0) {
+        notFound.push(show.name);
+        await sleep(60);
+        continue;
+      }
+      const best = data.results[0];
+
+      // 2. Dettagli: episodi totali e stato della serie
+      const detRes = await fetch(`https://api.themoviedb.org/3/tv/${best.id}?api_key=${TMDB_KEY}`);
+      const det = await detRes.json();
+
+      const updates = {
+        tmdb_id: best.id,
+        poster_path: best.poster_path,
+        updated_at: new Date().toISOString()
+      };
+
+      // Serie conclusa + tutti gli episodi visti = completata
+      const isEnded = det.status === 'Ended' || det.status === 'Canceled';
+      const totalEps = det.number_of_episodes || 0;
+      if (isEnded && totalEps > 0 && (show.episodes_seen || 0) >= totalEps && show.status === 'in_corso') {
+        updates.status = 'completata';
+        completed++;
+      }
+
+      await sb.from('shows').update(updates).eq('id', show.id);
+      Object.assign(show, updates);
+      matched++;
+      await sleep(60);
+    } catch (e) {
+      notFound.push(show.name + ' (errore)');
+      await sleep(60);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Sincronizza';
+  let msg = `Fatto: ${matched} serie agganciate a TMDB, ${completed} marcate completate.`;
+  if (notFound.length > 0) {
+    msg += ` Non trovate (${notFound.length}): ${notFound.slice(0, 10).join(', ')}${notFound.length > 10 ? '...' : ''}`;
+  }
+  statusEl.textContent = msg;
+  render();
+}
+
+// ====== USCITE IN ARRIVO ======
+// Per ogni serie agganciata a TMDB (non completata/abbandonata), legge il prossimo
+// episodio in programma e lo salva su Supabase, così resta visibile anche da iPhone/iPad
+// senza rifare tutte le chiamate.
+async function refreshUpcoming() {
+  const btn = document.getElementById('upcomingBtn');
+  const statusEl = document.getElementById('upcomingStatus');
+  btn.disabled = true;
+
+  const toCheck = allShows.filter(s => s.tmdb_id && (s.status === 'in_corso' || s.status === 'seguita' || s.status === 'guardando'));
+  let found = 0;
+
+  for (let i = 0; i < toCheck.length; i++) {
+    const show = toCheck[i];
+    statusEl.textContent = `Controllo ${i + 1} di ${toCheck.length}: ${show.name}`;
+    try {
+      const res = await fetch(`https://api.themoviedb.org/3/tv/${show.tmdb_id}?api_key=${TMDB_KEY}&language=it-IT`);
+      const det = await res.json();
+      const next = det.next_episode_to_air;
+      const updates = {
+        next_air_date: next ? next.air_date : null,
+        next_episode_label: next ? `S${next.season_number}E${next.episode_number}${next.name ? ' · ' + next.name : ''}` : null,
+        updated_at: new Date().toISOString()
+      };
+      await sb.from('shows').update(updates).eq('id', show.id);
+      Object.assign(show, updates);
+      if (next) found++;
+      await sleep(60);
+    } catch (e) {
+      await sleep(60);
+    }
+  }
+
+  btn.disabled = false;
+  statusEl.textContent = `Fatto: ${found} serie con episodi in programma.`;
+  render();
+}
+
+// ====== AUTENTICAZIONE ======
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) {
+    errEl.textContent = 'Accesso non riuscito: controlla email e password.';
+    return;
+  }
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('logoutLink').style.display = 'inline';
+  loadShows();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    document.getElementById('logoutLink').style.display = 'inline';
+    loadShows();
+  } else {
+    document.getElementById('subtitle').firstChild.textContent = '';
+    document.getElementById('loginOverlay').style.display = 'flex';
+  }
+}
+
+document.getElementById('loginPassword').addEventListener('keypress', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+init();
+</script>
+</body>
+</html>
